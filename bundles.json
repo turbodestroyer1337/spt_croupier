@@ -1,0 +1,52 @@
+{
+	"manifest": [
+        {
+			"key": "croupier_box_low.bundle",
+			"dependencyKeys": [
+                "cubemaps",
+				"shaders",
+				"assets/commonassets/physics/physicsmaterials.bundle"
+            ]
+		},
+		{
+			"key": "croupier_box_low_nogun.bundle",
+			"dependencyKeys": [
+                "cubemaps",
+				"shaders",
+				"assets/commonassets/physics/physicsmaterials.bundle"
+            ]
+		},
+		{
+			"key": "croupier_box_mid.bundle",
+			"dependencyKeys": [
+                "cubemaps",
+				"shaders",
+				"assets/commonassets/physics/physicsmaterials.bundle"
+            ]
+		},
+		{
+			"key": "croupier_box_mid_nogun.bundle",
+			"dependencyKeys": [
+                "cubemaps",
+				"shaders",
+				"assets/commonassets/physics/physicsmaterials.bundle"
+            ]
+		},
+		{
+			"key": "croupier_box_top.bundle",
+			"dependencyKeys": [
+                "cubemaps",
+				"shaders",
+				"assets/commonassets/physics/physicsmaterials.bundle"
+            ]
+		},
+		{
+			"key": "croupier_box_top_nogun.bundle",
+			"dependencyKeys": [
+                "cubemaps",
+				"shaders",
+				"assets/commonassets/physics/physicsmaterials.bundle"
+            ]
+		}
+	]
+}

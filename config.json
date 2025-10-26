@@ -1,0 +1,6 @@
+{
+    "FleaSellEnabled": true,
+    "FleaSellEnabledOnlyAfter15Lvl": true,
+    "FleaSellOnlyFoundInRaid": true,
+    "FleaSellTaxPercent": 20
+}

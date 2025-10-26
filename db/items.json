@@ -1,0 +1,56 @@
+[
+    {
+        "id": "676e674807fe27c9fbcf410d",
+        "objName": "croupier_box_low_nogun",
+        "name": "Random Loadout: LOW TIER (No Gun)",
+        "shortName": "Low Tier (NO GUN)",
+        "description": "Random Loadout: LOW TIER (No Gun)",
+        "backgroundColor": "yellow",
+        "prefab": "croupier_box_low_nogun.bundle"
+    },
+    {
+        "id": "676e66ad873d974331326aed",
+        "objName": "croupier_box_low",
+        "name": "Random Loadout: LOW TIER",
+        "shortName": "Low Tier",
+        "description": "Random Loadout: LOW TIER",
+        "backgroundColor": "yellow",
+        "prefab": "croupier_box_low.bundle"
+    },
+    {
+        "id": "676e673ff463b63eb4ad353b",
+        "objName": "croupier_box_mid_nogun",
+        "name": "Random Loadout: MID TIER (No Gun)",
+        "shortName": "Mid Tier (NO GUN)",
+        "description": "Random Loadout: MID TIER (No Gun)",
+        "backgroundColor": "blue",
+        "prefab": "croupier_box_mid_nogun.bundle"
+    },
+    {
+        "id": "676e66c9a0660ca45b61e4a3",
+        "objName": "croupier_box_mid",
+        "name": "Random Loadout: MID TIER",
+        "shortName": "Mid Tier",
+        "description": "Random Loadout: MID TIER",
+        "backgroundColor": "blue",
+        "prefab": "croupier_box_mid.bundle"
+    },
+    {
+        "id": "676e6735ea62d4e5b820aad1",
+        "objName": "croupier_box_top_nogun",
+        "name": "Random Loadout: TOP TIER (No Gun)",
+        "shortName": "Top Tier (NO GUN)",
+        "description": "Random Loadout: TOP TIER (No Gun)",
+        "backgroundColor": "violet",
+        "prefab": "croupier_box_top_nogun.bundle"
+    },
+    {
+        "id": "676e66e7e36748f0c288dafe",
+        "objName": "croupier_box_top",
+        "name": "Random Loadout: TOP TIER",
+        "shortName": "Top Tier",
+        "description": "Random Loadout: TOP TIER",
+        "backgroundColor": "violet",
+        "prefab": "croupier_box_top.bundle"
+    }
+]
