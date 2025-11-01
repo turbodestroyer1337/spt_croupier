@@ -11,7 +11,7 @@
       "green_gray": 2,
       "blue": 3,
       "bum": 8,
-      "winter": 1
+      "winter": 4
     },
     "mid": {
       "ru": 7,
@@ -23,9 +23,10 @@
       "gray": 3,
       "green_gray": 3,
       "bum": 3,
-      "winter": 1
+      "winter": 2
     },
     "top": {
+      "winter": 2,
       "ru": 4,
       "green": 4,
       "brown": 4,

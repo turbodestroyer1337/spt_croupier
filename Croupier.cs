@@ -1,40 +1,20 @@
-﻿using Microsoft.AspNetCore.Razor.TagHelpers;
-using Microsoft.Extensions.Logging;
-using SPTarkov.Common.Extensions;
-using SPTarkov.DI.Annotations;
-using SPTarkov.Server.Core.Callbacks;
-using SPTarkov.Server.Core.Constants;
-using SPTarkov.Server.Core.Controllers;
+﻿using SPTarkov.DI.Annotations;
 using SPTarkov.Server.Core.DI;
 using SPTarkov.Server.Core.Helpers;
 using SPTarkov.Server.Core.Models.Common;
-using SPTarkov.Server.Core.Models.Eft.Common;
-using SPTarkov.Server.Core.Models.Eft.Common.Request;
 using SPTarkov.Server.Core.Models.Eft.Common.Tables;
 using SPTarkov.Server.Core.Models.Eft.ItemEvent;
 using SPTarkov.Server.Core.Models.Eft.Trade;
-using SPTarkov.Server.Core.Models.Enums;
-using SPTarkov.Server.Core.Models.Spt.Bots;
 using SPTarkov.Server.Core.Models.Spt.Config;
-using SPTarkov.Server.Core.Models.Spt.Dialog;
 using SPTarkov.Server.Core.Models.Spt.Mod;
-using SPTarkov.Server.Core.Models.Spt.Services;
 using SPTarkov.Server.Core.Models.Utils;
 using SPTarkov.Server.Core.Routers;
 using SPTarkov.Server.Core.Servers;
-using SPTarkov.Server.Core.Servers.Http;
 using SPTarkov.Server.Core.Services;
 using SPTarkov.Server.Core.Utils;
 using SPTarkov.Server.Core.Utils.Cloners;
-using System.Collections;
-using System.ComponentModel;
-using System.Drawing;
-using System.IO.Compression;
-using System.Linq;
 using System.Reflection;
 using System.Text.Json;
-using System.Text.Json.Serialization;
-using System.Threading.Channels;
 using Path = System.IO.Path;
 
 namespace Croupier;
@@ -45,7 +25,7 @@ public record ModMetadata : AbstractModMetadata
     public override string Name { get; init; } = "Croupier";
     public override string Author { get; init; } = "turbodestroyer";
     public override List<string>? Contributors { get; init; }
-    public override SemanticVersioning.Version Version { get; init; } = new("2.0.0");
+    public override SemanticVersioning.Version Version { get; init; } = new("2.0.1");
     public override SemanticVersioning.Range SptVersion { get; init; } = new("~4.0.1");
 
     public override List<string>? Incompatibilities { get; init; }
@@ -54,7 +34,6 @@ public record ModMetadata : AbstractModMetadata
     public override bool? IsBundleMod { get; init; } = true;
     public override string? License { get; init; } = "MIT";
 }
-
 
 [Injectable(TypePriority = OnLoadOrder.PostDBModLoader + 1)]
 public class Croupier(ModHelper modHelper, ISptLogger<Croupier> logger, AddCustomTraderHelper addCustomTraderHelper, ImageRouter imageRouter, ConfigServer configServer, TimeUtil timeUtil, ICloner cloner, DatabaseService databaseService, LocaleService localeService) : IOnLoad
@@ -83,10 +62,13 @@ public class Croupier(ModHelper modHelper, ISptLogger<Croupier> logger, AddCusto
         db = databaseService.GetTables();
         var dbLocales = databaseService.GetTables().Locales.Global;
         var items = modHelper.GetJsonDataFromFile<List<DbItem>>(CroupierData.pathToMod, "db/items.json");
-        foreach (var item in items) {
+        foreach (var item in items)
+        {
             AddNewDbItem(item);
-            foreach (var (localeKey, localeKvP) in dbLocales) {
-                localeKvP.AddTransformer(lazyloadedLocaleData => {
+            foreach (var (localeKey, localeKvP) in dbLocales)
+            {
+                localeKvP.AddTransformer(lazyloadedLocaleData =>
+                {
                     lazyloadedLocaleData.Add($"{item.id} Name", item.name);
                     lazyloadedLocaleData.Add($"{item.id} ShortName", item.shortName);
                     lazyloadedLocaleData.Add($"{item.id} Description", item.description);
@@ -100,10 +82,11 @@ public class Croupier(ModHelper modHelper, ISptLogger<Croupier> logger, AddCusto
         addCustomTraderHelper.AddTraderToLocales(traderBase, "Croupier", "The best loadouts in Tarkov.");
         var assort = modHelper.GetJsonDataFromFile<TraderAssort>(CroupierData.pathToMod, "db/assort.json");
         addCustomTraderHelper.OverwriteTraderAssort(traderBase.Id, assort);
+
+        CroupierData.weatherConfig = configServer.GetConfig<WeatherConfig>();
         return Task.CompletedTask;
     }
     
-
     private void AddNewDbItem(DbItem item)
     {
         var newItem = cloner.Clone(db.Templates.Items[original_item_id]);
@@ -119,6 +102,7 @@ public class Croupier(ModHelper modHelper, ISptLogger<Croupier> logger, AddCusto
         newItem.Properties.NotShownInSlot = true;
         newItem.Properties.ExaminedByDefault = false;
         newItem.Properties.IsUngivable = true;
+        //newItem.Properties.IsUnsaleable = true;
         newItem.Properties.Unlootable = true;
         newItem.Properties.Prefab.Path = item.prefab;
         db.Templates.Items.Add(newItem.Id, newItem);
@@ -164,26 +148,19 @@ public class CroupierBeforeRouter : StaticRouter {
     }
 
     public static List<Item>? GetCachedInventory(string sessionId) {
+        //Console.WriteLine($"CroupierBeforeRouter: Retrieving cached inventory for session {sessionId}");
         return _itemCache.TryGetValue(sessionId, out var itemList) ? itemList : null;
     }
 
     public static void ClearCache(string sessionId) {
+        //Console.WriteLine($"CroupierBeforeRouter: Clearing cached inventory for session {sessionId}");
         _itemCache.Remove(sessionId);
     }
 
     public static void ClearAllCache() {
+        //Console.WriteLine($"CroupierBeforeRouter: Clearing all cached inventories");
         _itemCache.Clear();
     }
-}
-
-public static class CroupierData
-{
-    public static ModConfig? Config { get; set; }
-    public static List<string>? BlackmarketFailMessages { get; set; }
-    public static List<string>? BlackmarketSuccessMessages { get; set; }
-    public static List<string>? CroupierSuccessMessages { get; set; }
-    public static List<string>? DbItems { get; set; }
-    public static string pathToMod = "";
 }
 
 [Injectable]
@@ -350,11 +327,19 @@ public class CroupierStaticRouter : StaticRouter
                                             inventoryHelper.RemoveItem(pmcData, (MongoId)itemIdFound, sessionID);
                                         }
 
+                                        var currentSeason = GetCurrentSeason();
+                                        bool isWinter;
+                                        if (currentSeason == 2 || currentSeason == 3) {
+                                            isWinter = true;
+                                        } else {
+                                            isWinter = false;
+                                        }
 
                                         for (var j = 0; j < count; j++) {
                                             var messages = CroupierData.CroupierSuccessMessages;
                                             var random_message = messages != null && messages.Count > 0 ? messages[new Random().Next(messages.Count)] : "Here's your stuff!";
-                                            var roulette = new Roulette(tier, needsGun);
+                                            var roulette = new Roulette(tier, needsGun, isWinter);
+                                            //logger.Info($"CroupierStaticRouter: Generated items, length is {roulette.GeneratedItems.Count}");
                                             mailSend.SendDirectNpcMessageToPlayer(sessionID, "1337bb0dd843363fcd1be869", SPTarkov.Server.Core.Models.Enums.MessageType.FleamarketMessage, random_message, roulette.GeneratedItems);
                                         }
                                     }
@@ -404,8 +389,43 @@ public class CroupierStaticRouter : StaticRouter
 
         return additionalMoney;
     }
+
+    private static int GetCurrentSeason()
+    {
+        if (CroupierData.weatherConfig.OverrideSeason.HasValue)
+        {
+            return (int)CroupierData.weatherConfig.OverrideSeason.Value;
+        }
+
+        var seasonDates = CroupierData.weatherConfig.SeasonDates;
+        var md = DateTime.Now.Month * 100 + DateTime.Now.Day;
+        foreach (var s in seasonDates)
+        {
+            var start = s.StartMonth.GetValueOrDefault() * 100 + s.StartDay.GetValueOrDefault();
+            var end = s.EndMonth.GetValueOrDefault() * 100 + s.EndDay.GetValueOrDefault();
+            var wraps = end < start;
+            var inRange = wraps ? md >= start || md <= end : md >= start && md <= end;
+            if (inRange)
+            {
+                return (int)s.SeasonType.GetValueOrDefault();
+            }
+        }
+
+        return 0;
+    }
+
 }
 
+public static class CroupierData
+{
+    public static ModConfig? Config { get; set; }
+    public static List<string>? BlackmarketFailMessages { get; set; }
+    public static List<string>? BlackmarketSuccessMessages { get; set; }
+    public static List<string>? CroupierSuccessMessages { get; set; }
+    public static List<string>? DbItems { get; set; }
+    public static string pathToMod = "";
+    public static WeatherConfig? weatherConfig;
+}
 
 public class ModConfig
 {

@@ -1,10 +1,5 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Text.Json;
+﻿using System.Text.Json;
 using System.Text.Json.Serialization;
-using System.Threading.Tasks;
 
 namespace Croupier;
 
@@ -146,7 +141,7 @@ public class GameDataLoader
         },
             Eyewear = LoadJson<Dictionary<string, List<string>>>(Path.Combine(basePath, "data", "eyewear.json")),
             Headset = LoadJson<Dictionary<string, List<string>>>(Path.Combine(basePath, "data", "headsets.json")),
-            Facemasks = LoadJson<Dictionary<string, List<string>>>(Path.Combine(basePath, "data", "facemasks.json"))
+            Facemasks = LoadJson<Dictionary<string, List<GearItem>>>(Path.Combine(basePath, "data", "facemasks.json"))
         };
     }
 
@@ -181,7 +176,7 @@ public class OutfitGearData
     public Dictionary<string, List<GearItem>> Headwear { get; set; }
     public Dictionary<string, List<string>> Eyewear { get; set; }
     public Dictionary<string, List<string>> Headset { get; set; }
-    public Dictionary<string, List<string>> Facemasks { get; set; }
+    public Dictionary<string, List<GearItem>> Facemasks { get; set; }
 }
 
 public class ModItem

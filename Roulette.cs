@@ -1,45 +1,6 @@
-﻿using Microsoft.AspNetCore.Mvc.RazorPages;
-using Microsoft.AspNetCore.Razor.TagHelpers;
-using Microsoft.Extensions.Logging;
-using Microsoft.VisualBasic;
-using SPTarkov.Common.Extensions;
-using SPTarkov.DI.Annotations;
-using SPTarkov.Server.Core.Callbacks;
-using SPTarkov.Server.Core.Constants;
-using SPTarkov.Server.Core.Controllers;
-using SPTarkov.Server.Core.DI;
-using SPTarkov.Server.Core.Helpers;
-using SPTarkov.Server.Core.Models.Common;
-using SPTarkov.Server.Core.Models.Eft.Common;
-using SPTarkov.Server.Core.Models.Eft.Common.Request;
+﻿using SPTarkov.Server.Core.Models.Common;
 using SPTarkov.Server.Core.Models.Eft.Common.Tables;
-using SPTarkov.Server.Core.Models.Eft.ItemEvent;
-using SPTarkov.Server.Core.Models.Eft.Trade;
-using SPTarkov.Server.Core.Models.Enums;
-using SPTarkov.Server.Core.Models.Spt.Bots;
-using SPTarkov.Server.Core.Models.Spt.Config;
-using SPTarkov.Server.Core.Models.Spt.Dialog;
-using SPTarkov.Server.Core.Models.Spt.Mod;
-using SPTarkov.Server.Core.Models.Spt.Services;
-using SPTarkov.Server.Core.Models.Utils;
-using SPTarkov.Server.Core.Routers;
-using SPTarkov.Server.Core.Servers;
-using SPTarkov.Server.Core.Servers.Http;
-using SPTarkov.Server.Core.Services;
-using SPTarkov.Server.Core.Utils;
-using SPTarkov.Server.Core.Utils.Cloners;
-using System.Collections;
-using System.ComponentModel;
-using System.Drawing;
-using System.IO.Compression;
-using System.Linq;
-using System.Reflection;
 using System.Text.Json;
-using System.Text.Json.Serialization;
-using System.Threading.Channels;
-using System.Xml.Linq;
-using static System.Runtime.InteropServices.JavaScript.JSType;
-using Path = System.IO.Path;
 
 namespace Croupier;
 
@@ -48,6 +9,7 @@ public class Roulette
     private static Random _random = new Random();
     public Tier Tier { get; set; }
     public bool NeedsGun { get; set; }
+    public bool IsWinter { get; set; } = false;
     public List<Item> GeneratedItems { get; set; }
     public List<string> DbMap { get; set; } = new List<string>();
 
@@ -55,18 +17,20 @@ public class Roulette
 
     public GameDataLoader data = GameDataLoader.Instance;
 
-    public Roulette(Tier tier, bool needsGun)
-    {
+    public Roulette(Tier tier, bool needsGun, bool isWinter) {
         Tier = tier;
         NeedsGun = needsGun;
         DbMap = CroupierData.DbItems;
+        IsWinter = isWinter;
         GeneratedItems = generateItems(tier, needsGun);
     }
 
-    private List<Item> generateItems(Tier tier, bool needsGun)
-    {
+    private List<Item> generateItems(Tier tier, bool needsGun) {
         items = new List<Item>();
         var color = GetRandomColor(tier);
+        if (!IsWinter && color == "winter") {
+            color = GetRandomColor(tier); // it's okay if we get winter again in a non-snowy season, adds some variety & unluck feeling
+        }
         var tierString = tier.ToString().ToLower();
         var parentId = new MongoId();
         var variousStuffArray = new List<InventoryItem>();
@@ -88,10 +52,31 @@ public class Roulette
         var headsetIds = data.OutfitsGear.Headset[tierString].Where(id => DbMap.Contains(id)).ToList();
         string headsetId = headsetIds[_random.Next(headsetIds.Count)];
         if (headsetId != null && headwear != null && headwear.blocks_headset != true) { 
+            items.Add(new Item {
+                Id = new MongoId(),
+                Template = headsetId,
+                ParentId = parentId,
+                SlotId = "main",
+                Upd = new Upd {
+                    StackObjectsCount = 1
+                }
+            });
+        }
+
+        // facecover
+        string facecoverTier = RandomizeTier(tier).ToString().ToLower();
+        var allFacecoverItems = data.OutfitsGear.Facemasks[facecoverTier];
+        var facecoverArray = AlignChances(RemoveInvalidItems(allFacecoverItems), facecoverTier);
+        var filteredFacecoverArray = facecoverArray.Where(item => item.tags?.Contains(color) == true).ToList();
+        if (filteredFacecoverArray.Count == 0) {
+            filteredFacecoverArray = facecoverArray;
+        }
+        var facecover = SelectRandomItem(filteredFacecoverArray);
+        if (facecover != null && headwear != null && headwear.blocks_facecover != true) {
             items.Add(new Item
             {
                 Id = new MongoId(),
-                Template = headsetId,
+                Template = facecover.id,
                 ParentId = parentId,
                 SlotId = "main",
                 Upd = new Upd
@@ -101,18 +86,16 @@ public class Roulette
             });
         }
 
-        // facecover
-        var facecoverIds = data.OutfitsGear.Facemasks[tierString].Where(id => DbMap.Contains(id)).ToList(); ;
-        string facecoverId = facecoverIds[_random.Next(facecoverIds.Count)];
-        if (facecoverId != null && headwear != null && headwear.blocks_facecover != true) {
-            items.Add(new Item
-            {
+        // eyewear
+        var eyewearIds = data.OutfitsGear.Eyewear[tierString].Where(id => DbMap.Contains(id)).ToList();
+        string eyewearId = eyewearIds[_random.Next(eyewearIds.Count)];
+        if (eyewearId != null && headwear != null && headwear.blocks_headset != true && (facecover == null || facecover.blocks_eyewear != true)) {
+            items.Add(new Item {
                 Id = new MongoId(),
-                Template = facecoverId,
+                Template = eyewearId,
                 ParentId = parentId,
                 SlotId = "main",
-                Upd = new Upd
-                {
+                Upd = new Upd {
                     StackObjectsCount = 1
                 }
             });
@@ -129,14 +112,12 @@ public class Roulette
         }
         var backpack = SelectRandomItem(filteredBackpackArray);
         if (backpack != null) {
-            items.Add(new Item
-            {
+            items.Add(new Item {
                 Id = backpackId,
                 Template = backpack.id,
                 SlotId = "main",
                 ParentId = parentId,
-                Upd = new Upd
-                {
+                Upd = new Upd {
                     StackObjectsCount = 1,
                     Repairable = new UpdRepairable()
                 }
@@ -183,12 +164,10 @@ public class Roulette
             var gunTier = RandomizeTier(tier).ToString().ToLower();
             var gunArray = AlignChances(RemoveInvalidItems(data.Guns[gunTier]), gunTier);
             List<string> gunClasses = new List<string>();
-            foreach (var entry in data.Constants.gunClassMultiplier[gunTier])
-            {
+            foreach (var entry in data.Constants.gunClassMultiplier[gunTier]) {
                 string gunClass = entry.Key;
                 int multiplier = entry.Value;
-                for (int i = 0; i < multiplier; i++)
-                {
+                for (int i = 0; i < multiplier; i++) {
                     gunClasses.Add(gunClass);
                 }
             }
@@ -565,21 +544,15 @@ public class Roulette
     private void AddMagazinesToInventory( List<Magazine> magazinesArrUnf, List<string> ammoArr, int count, string gunId, string chestrigId, List<int> chestrigGrid, string backpackId, string backpackSlot) {
         List<(Magazine mag, int slot, bool isBackpack)> finalMagsList = new List<(Magazine, int, bool)>();
         int magazinesLeft = count;
-
         var magazinesArr = magazinesArrUnf.Where(mag => DbMap.Contains(mag.id)).ToList();
-
         int mags4sCount = chestrigGrid.Count(val => val == 4);
         int mags3sCount = chestrigGrid.Count(val => val == 3);
-
         bool hasSmallMags = magazinesArr.Any(mag => mag.slots == 2) || magazinesArr.Any(mag => mag.slots == 1);
 
-        if (hasSmallMags || mags4sCount > 0)
-        {
+        if (hasSmallMags || mags4sCount > 0) {
             // 4x mags
-            if (magazinesLeft > 0 && mags4sCount > 0 && magazinesArr.Any(mag => mag.slots == 4))
-            {
-                for (int i = 0; i < mags4sCount && magazinesLeft > 0; i++)
-                {
+            if (magazinesLeft > 0 && mags4sCount > 0 && magazinesArr.Any(mag => mag.slots == 4)) {
+                for (int i = 0; i < mags4sCount && magazinesLeft > 0; i++) {
                     var mags4x = magazinesArr.Where(mag => mag.slots == 4).ToList();
                     var mag = mags4x[_random.Next(mags4x.Count)];
                     int chestrigSlot = chestrigGrid.IndexOf(4) + 1;
@@ -590,10 +563,8 @@ public class Roulette
             }
 
             // 3x mags
-            if (magazinesLeft > 0 && mags3sCount > 0 && magazinesArr.Any(mag => mag.slots == 3))
-            {
-                for (int i = 0; i < mags3sCount && magazinesLeft > 0; i++)
-                {
+            if (magazinesLeft > 0 && mags3sCount > 0 && magazinesArr.Any(mag => mag.slots == 3)) {
+                for (int i = 0; i < mags3sCount && magazinesLeft > 0; i++) {
                     var mags3x = magazinesArr.Where(mag => mag.slots == 3).ToList();
                     var mag = mags3x[_random.Next(mags3x.Count)];
                     int chestrigSlot = chestrigGrid.IndexOf(3) + 1;
@@ -604,29 +575,24 @@ public class Roulette
             }
 
             // other mags (1x and 2x)
-            if (magazinesArr.Any(mag => mag.slots == 2) || magazinesArr.Any(mag => mag.slots == 1))
-            {
-                for (int i = 0; i < magazinesLeft; i++)
-                {
+            if (magazinesArr.Any(mag => mag.slots == 2) || magazinesArr.Any(mag => mag.slots == 1)) {
+                for (int i = 0; i < magazinesLeft; i++) {
                     var availableMags = magazinesArr.Where(mag => mag.slots <= 2).ToList();
                     if (availableMags.Count == 0) break;
 
                     var mag = availableMags[_random.Next(availableMags.Count)];
 
                     int slot = GetFreeChestrigSlot(chestrigGrid, mag.slots);
-                    if (slot != -1)
-                    {
+                    if (slot != -1) {
                         finalMagsList.Add((mag, slot + 1, false));
                         chestrigGrid[slot] = chestrigGrid[slot] - mag.slots;
                     }
                 }
             }
         }
-        else
-        {
+        else {
             // if only 4/3x mags are available, and there is no space in chestrig - add them to backpack
-            for (int i = 0; i < magazinesLeft; i++)
-            {
+            for (int i = 0; i < magazinesLeft; i++) {
                 var mag = magazinesArr[_random.Next(magazinesArr.Count)];
                 finalMagsList.Add((mag, 0, true)); // true = backpack, slot не важен
             }
@@ -688,14 +654,12 @@ public class Roulette
                 Template = item.id,
                 ParentId = parentId,
                 SlotId = slotId,
-                Upd = new Upd
-                {
+                Upd = new Upd {
                     StackObjectsCount = item.StackObjectsCount
                 }
             });
         }
     }
-
 
     private int RandomizeCount(int max)
     {
