@@ -15,6 +15,7 @@ using SPTarkov.Server.Core.Utils;
 using SPTarkov.Server.Core.Utils.Cloners;
 using System.Reflection;
 using System.Text.Json;
+using System.Text.Json.Serialization;
 using Path = System.IO.Path;
 
 namespace Croupier;
@@ -25,8 +26,8 @@ public record ModMetadata : AbstractModMetadata
     public override string Name { get; init; } = "Croupier";
     public override string Author { get; init; } = "turbodestroyer";
     public override List<string>? Contributors { get; init; }
-    public override SemanticVersioning.Version Version { get; init; } = new("2.0.1");
-    public override SemanticVersioning.Range SptVersion { get; init; } = new("~4.0.1");
+    public override SemanticVersioning.Version Version { get; init; } = new("2.0.3");
+    public override SemanticVersioning.Range SptVersion { get; init; } = new("~4.0.2");
 
     public override List<string>? Incompatibilities { get; init; }
     public override Dictionary<string, SemanticVersioning.Range>? ModDependencies { get; init; }
@@ -163,6 +164,8 @@ public class CroupierBeforeRouter : StaticRouter {
     }
 }
 
+
+
 [Injectable]
 public class CroupierStaticRouter : StaticRouter
 {
@@ -225,6 +228,7 @@ public class CroupierStaticRouter : StaticRouter
                                     } 
                                     
                                     if (tradingData.Type == "buy_from_trader") {
+                                        var newItemsCount = 0;
                                         if (CroupierData.DbItems == null) {
                                             var dbItems = databaseService.GetTables().Templates.Items;
                                             List<string> ids = dbItems.Keys.Select(key => key.ToString()).ToList();
@@ -260,6 +264,7 @@ public class CroupierStaticRouter : StaticRouter
                                                             if (items.TryGetProperty("new", out var newItems)) {
                                                                 var filteredNewItems = new List<object>();
                                                                 foreach (var item in newItems.EnumerateArray()) {
+                                                                    newItemsCount++;
                                                                     if (item.TryGetProperty("_tpl", out var tpl) && item.TryGetProperty("_id", out var id)) {
                                                                         var tplValue = tpl.GetString();
                                                                         var idValue = id.GetString();
@@ -335,13 +340,15 @@ public class CroupierStaticRouter : StaticRouter
                                             isWinter = false;
                                         }
 
-                                        for (var j = 0; j < count; j++) {
-                                            var messages = CroupierData.CroupierSuccessMessages;
-                                            var random_message = messages != null && messages.Count > 0 ? messages[new Random().Next(messages.Count)] : "Here's your stuff!";
-                                            var roulette = new Roulette(tier, needsGun, isWinter);
-                                            //logger.Info($"CroupierStaticRouter: Generated items, length is {roulette.GeneratedItems.Count}");
-                                            mailSend.SendDirectNpcMessageToPlayer(sessionID, "1337bb0dd843363fcd1be869", SPTarkov.Server.Core.Models.Enums.MessageType.FleamarketMessage, random_message, roulette.GeneratedItems);
+                                        if (newItemsCount > 0) {
+                                            for (var j = 0; j < count; j++) {
+                                                var messages = CroupierData.CroupierSuccessMessages;
+                                                var random_message = messages != null && messages.Count > 0 ? messages[new Random().Next(messages.Count)] : "Here's your stuff!";
+                                                var roulette = new Roulette(tier, needsGun, isWinter);
+                                                mailSend.SendDirectNpcMessageToPlayer(sessionID, "1337bb0dd843363fcd1be869", SPTarkov.Server.Core.Models.Enums.MessageType.FleamarketMessage, random_message, roulette.GeneratedItems);
+                                            }
                                         }
+                                        
                                     }
                                 }
                             }
@@ -373,7 +380,7 @@ public class CroupierStaticRouter : StaticRouter
         if (cachedInventory != null) {
             foreach (var cachedItem in cachedInventory) {
                 if ((itemIds.Contains(cachedItem.Id.ToString())) && (!itemIds.Contains(cachedItem.ParentId.ToString()))) {
-                    if (!CroupierData.Config.FleaSellOnlyFoundInRaid || cachedItem.Upd.SpawnedInSession == true) {
+                    if (!CroupierData.Config.FleaSellOnlyFoundInRaid || (cachedItem.Upd != null && cachedItem.Upd.SpawnedInSession == true)) {
                         var count = itemCounts[cachedItem.Id.ToString()];
                         var flea_price = Convert.ToInt32(_itemHelper.GetDynamicItemPrice((MongoId)cachedItem.Template));
                         var handbook_price = _itemHelper.GetStaticItemPrice((MongoId)cachedItem.Template);

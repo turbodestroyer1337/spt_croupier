@@ -664,17 +664,9 @@ public class Roulette
     private int RandomizeCount(int max)
     {
         if (max <= 0) return 0;
-
-        double rand = _random.NextDouble();
-
-        if (rand < 0.4)
-            return max;
-        else if (rand < 0.7)
-            return Math.Max(1, max - 1);
-        else if (rand < 0.9)
-            return Math.Max(0, max - 2);
-        else
-            return 0;
+        double factor = 1.0 + _random.NextDouble() * 0.6;
+        int result = (int)Math.Round(max * factor);
+        return Math.Max(1, result);
     }
 
     private class TierProbability

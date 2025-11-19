@@ -183,7 +183,8 @@
       "weapon_ksg12": 0.6,
       "weapon_wa2000": 0.66,
       "weapon_aklys_defense_velociraptor_762x35": 0.66,
-      "weapon_kiba_saiga12k_fa_12g": 1.5
+      "weapon_kiba_saiga12k_fa_12g": 1.5,
+      "weapon_theakguy_ak50_127x99": 0.2
     }
   },
   "gunClassMultiplier": {
